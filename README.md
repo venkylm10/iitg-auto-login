@@ -45,11 +45,11 @@ Follow the steps below to install and configure the IITG Auto Login:
 
 ## Update Credentials
     
-    You can update your creds anytime from the same directory:
-    ```bash
-    chmod +x update_creds.sh
-    ./update_creds <updated_username> <updated_password>
-    ```
+   You can update your creds anytime from the same directory:
+   ```
+   chmod +x update_creds.sh
+   ./update_creds <updated_username> <updated_password>
+   ```
 
 ## Usage
 
