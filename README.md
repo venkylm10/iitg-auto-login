@@ -38,11 +38,8 @@ If you already have installed previous version. Uninstall it using the previous 
 5. **Verify the installation**:
     - Your credentials will be stored in `~/iitg-auto-login/config.env`.
     - The `auto_login.sh` script will be located at `~/iitg-auto-login/auto_login.sh`.
-    - A new user service `iitg-auto-login.service` should be created
-    check its status using
-    ```
-    systemctl --user status iitg-auto-login.service
-    ```
+    - A new dispatcher script `iitg-auto-login-dispatcher.sh` should be present at
+      `/etc/NetworkManager/dispatcher.d/`
 
 ## Update Credentials
     
