@@ -3,7 +3,7 @@
 PROCESS_NAME="iitg-auto-login"
 
 # Set the log file path
-LOGFILE="/tmp/auto_login.log"
+LOGFILE="/tmp/iitg-auto_login.log"
 
 # Load configuration
 if [[ -f "$HOME/.iitg-auto-login/config.env" ]]; then
