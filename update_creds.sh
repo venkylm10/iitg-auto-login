@@ -10,20 +10,20 @@ USERNAME=$1
 PASSWORD=$2
 
 # Create the directory for config.env if it doesn't exist
-mkdir -p "$HOME/iitgauto-login"
+mkdir -p "$HOME/iitg-auto-login"
 
 # Clear the contents of the file if it exists
-if [ -f "$HOME/iitgauto-login/config.env" ]; then
-    truncate -s 0 "$HOME/iitgauto-login/config.env"
+if [ -f "$HOME/iitg-auto-login/config.env" ]; then
+    truncate -s 0 "$HOME/iitg-auto-login/config.env"
 else
-    touch "$HOME/iitgauto-login/config.env"
+    touch "$HOME/iitg-auto-login/config.env"
 fi
 
 # Write new content to the file
-cat > "$HOME/iitgauto-login/config.env" << EOF
+cat > "$HOME/iitg-auto-login/config.env" << EOF
 USERNAME="$USERNAME"
 PASSWORD="$PASSWORD"
 EOF
 
 # Final message to the user
-echo "Credentials updated in $HOME/iitgauto-login/config.env"
+echo "Credentials updated in $HOME/iitg-auto-login/config.env"
