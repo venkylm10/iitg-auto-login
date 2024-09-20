@@ -6,8 +6,8 @@ PROCESS_NAME="iitg-auto-login"
 LOGFILE="/tmp/iitg-auto_login.log"
 
 # Load configuration
-if [[ -f "$HOME/.iitg-auto-login/config.env" ]]; then
-    source "$HOME/.iitg-auto-login/config.env"
+if [[ -f "$HOME/iitg-auto-login/config.env" ]]; then
+    source "$HOME/iitg-auto-login/config.env"
 else
     echo "[*] Configuration file not found!"
     exit 1
