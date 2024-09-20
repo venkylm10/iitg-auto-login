@@ -9,6 +9,7 @@ This project automates the login process for the IITG LAN and keeps the session 
 ## Installation
 
 Follow the steps below to install and configure the IITG Auto Login:
+If you already have installed previous version. Uninstall it using the previous uninstall.sh script
 
 1. **Download the repository**:  
    Clone this repository or download the files to your local machine.
