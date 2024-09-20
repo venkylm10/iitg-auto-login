@@ -35,8 +35,8 @@ Follow the steps below to install and configure the IITG Auto Login:
     ```
 
 5. **Verify the installation**:
-    - Your credentials will be stored in `~/.iitg-auto-login/config.env`.
-    - The `auto_login.sh` script will be located at `~/.iitg-auto-login/auto_login.sh`.
+    - Your credentials will be stored in `~/iitg-auto-login/config.env`.
+    - The `auto_login.sh` script will be located at `~/iitg-auto-login/auto_login.sh`.
     - A new user service `iitg-auto-login.service` should be created
     check its status using
     ```
@@ -56,7 +56,7 @@ Follow the steps below to install and configure the IITG Auto Login:
 The auto-login script will automatically run when you connect to a WiFi or Ethernet network or When you login to your device. To manually trigger the login script, run:
 
 ```bash
-$HOME/.iitg-auto-login/auto_login.sh
+$HOME/iitg-auto-login/auto_login.sh
 ```
 
 ## Logging
