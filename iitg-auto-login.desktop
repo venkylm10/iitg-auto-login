@@ -6,4 +6,3 @@ Exec=/home/username/iitg-auto-login/auto_login.sh
 Terminal=false
 Type=Application
 X-GNOME-Autostart-enabled=true
-

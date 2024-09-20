@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# Remove the systemd service
-systemctl --user disable iitg-auto-login.service
-rm $HOME/.config/systemd/user/iitg-auto-login.service
+sudo true
+sudo rm -f /etc/NetworkManager/dispatcher.d/iitg-auto-login-dispatcher.sh
+
+sudo systemctl restart NetworkManager
 
 # Remove the auto_login.sh script
 rm -r "$HOME/iitg-auto-login"

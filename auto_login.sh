@@ -5,9 +5,12 @@ PROCESS_NAME="iitg-auto-login"
 # Set the log file path
 LOGFILE="/tmp/iitg-auto_login.log"
 
+# Update this user home value
+USERHOME="/home/username"
+
 # Load configuration
-if [[ -f "$HOME/iitg-auto-login/config.env" ]]; then
-    source "$HOME/iitg-auto-login/config.env"
+if [[ -f "$USERHOME/iitg-auto-login/config.env" ]]; then
+    source "$USERHOME/iitg-auto-login/config.env"
 else
     echo "[*] Configuration file not found!"
     exit 1
@@ -93,6 +96,7 @@ login() {
 # Function to keep the session alive
 keep_session_alive() {
     while true; do
+    	echo "$(date)"
         response=$(curl -k "$keepalive")
 
         if [[ $? -ne 0 ]]; then
