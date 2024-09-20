@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=IITG Auto Login
+GenericName=Automatically Login to IITG LAN and Keep Session Alive
+Comment=This script automatically logs into the IITG LAN and maintains the session.
+Exec=/home/username/iitg-auto-login/auto_login.sh
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true
+

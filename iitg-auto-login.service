@@ -1,0 +1,12 @@
+[Unit]
+Description=Run script auto_login.sh on network interface connection
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/username/iitg-auto-login/auto_login.sh
+User=username
+
+[Install]
+WantedBy=default.target
