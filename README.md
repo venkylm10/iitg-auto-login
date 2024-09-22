@@ -51,11 +51,9 @@ If you already have installed previous version. Uninstall it using the previous 
 
 ## Usage
 
-The auto-login script will automatically run when you connect to a WiFi or Ethernet network or When you login to your device. To manually trigger the login script, run:
-
-```bash
-$HOME/iitg-auto-login/auto_login.sh
-```
+   - Automatically Logs you in to the wifi network, when you login to your device.
+   - If at all it gets logged out. All you need to do is just turn wifi off and on or disconnect and plug ethernet cable back again, will try to remove this hardle too in upcoming releases.
+   - That's it.
 
 ## Logging
 
