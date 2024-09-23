@@ -29,11 +29,12 @@ If you already have installed previous version. Uninstall it using the previous 
     ```
 
 4. **Run the installation script**:
-    Use the installation script to set up the auto login. Replace <username> and <password> with your actual IITG credentials:
+    Use the installation script to set up the auto login.
     (Don't include '< >' in the command)
     ```bash
-    ./install.sh <username> <password>
+    ./install.sh
     ```
+    You will be prompted to enter username and password.
 
 5. **Verify the installation**:
     - Your credentials will be stored in `~/iitg-auto-login/config.env`.
@@ -46,8 +47,9 @@ If you already have installed previous version. Uninstall it using the previous 
    You can update your creds anytime from the same directory:
    ```
    chmod +x update_creds.sh
-   ./update_creds <updated_username> <updated_password>
+   ./update_creds
    ```
+   You will be prompted to enter username and password
 
 ## Usage
 

@@ -1,13 +1,8 @@
 #!/bin/bash
 
-# Check if username and password are provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: ./update_creds.sh <username> <password>"
-    exit 1
-fi
-
-USERNAME=$1
-PASSWORD=$2
+read -p "Enter your username: " USERNAME
+read -s -p "Enter your password: " PASSWORD
+echo
 
 # Create the directory for config.env if it doesn't exist
 mkdir -p "$HOME/iitg-auto-login"

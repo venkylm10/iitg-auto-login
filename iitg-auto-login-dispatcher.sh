@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Update this user home value
-USERHOME="/home/username"
+USERHOME="/home/<username>"
 
 if [ "$2" = "up" ]; then
     # Replace with the path to your script

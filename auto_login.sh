@@ -6,7 +6,7 @@ PROCESS_NAME="iitg-auto-login"
 LOGFILE="/tmp/iitg-auto_login.log"
 
 # Update this user home value
-USERHOME="/home/username"
+USERHOME="/home/<username>"
 
 # Load configuration
 if [[ -f "$USERHOME/iitg-auto-login/config.env" ]]; then
