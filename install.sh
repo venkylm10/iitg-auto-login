@@ -9,7 +9,6 @@ USERHOME=$HOME
 replace_username() {
     local template_file="$1" 
     local username=$(whoami)
-    echo $username
     sudo sed -i "s|<username>|$username|g" "$template_file"
 }
 
