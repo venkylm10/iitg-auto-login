@@ -25,7 +25,7 @@ password="$PASSWORD"
 # Global variables for session management
 session_param=""
 keepalive=""
-# Store last HTTP response body for logging on failures only
+# Store last HTTP response body (kept for future use, but no longer dumped to log)
 RESPONSE_FILE="/tmp/iitg_auto_login_last_response.html"
 
 # Redirect both stdout and stderr to the log file
@@ -48,9 +48,7 @@ echo "Script started at $(date)"
 # Function to handle cleanup on exit
 cleanup() {
     echo "[*] Cleaning up..."
-    # Clean up cookies file
     rm -f /tmp/iitg_cookies.txt
-    # Clean up last response file
     rm -f "$RESPONSE_FILE"
     exit 0
 }
@@ -70,7 +68,6 @@ terminate_old_session() {
 # Function to logout from the IITG portal
 logout() {
     echo "[*] Logging out..."
-    # Try with session parameter if available, otherwise use basic logout
     if [[ -n "$session_param" ]]; then
         http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
@@ -82,82 +79,72 @@ logout() {
     fi
 
     if [[ $? -ne 0 || "$http_code" != "200" ]]; then
-        echo "[*] Logout failed! (HTTP $http_code)"
-        rotate_log_if_large
-        echo "--- Response (logout) ---" >> "$LOGFILE"
-        cat "$RESPONSE_FILE" >> "$LOGFILE"
-        return 1  # allow retry
+        echo "[*] Logout failed (HTTP $http_code). Continuing anyway."
+        return 1
     fi
-    echo "[*] Logged out!"
+    echo "[*] Logged out."
 }
 
-# Function to login
+# Function to login (with retry loop)
 login() {
-    logout  # Make sure to logout first
-    echo "Logging in with Username: $username"
+    while true; do
+        echo "Logging in with Username: $username"
+        logout >/dev/null 2>&1
+        rm -f /tmp/iitg_cookies.txt
 
-    # Clean up any existing cookies
-    rm -f /tmp/iitg_cookies.txt
+        url='https://agnigarh.iitg.ac.in:1442/login?'
+        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
+            "$url")
 
-    url='https://agnigarh.iitg.ac.in:1442/login?'
-    http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt \
-        -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
-        "$url")
+        if [[ $? -ne 0 || "$http_code" != "200" ]]; then
+            echo "[*] Error fetching login page (HTTP $http_code). Retry in 2s..."
+            rotate_log_if_large
+            sleep 2
+            continue
+        fi
 
-    if [[ $? -ne 0 || "$http_code" != "200" ]]; then
-        echo "[*] Error fetching login page (HTTP $http_code)"
-        rotate_log_if_large
-        echo "--- Response (login page) ---" >> "$LOGFILE"
-        cat "$RESPONSE_FILE" >> "$LOGFILE"
-        exit 1
-    fi
+        rsp=$(cat "$RESPONSE_FILE")
+        magic=$(echo "$rsp" | grep -oE 'name="magic" value="([^"]+)' | sed 's/.*value="\([^"]*\).*/\1/')
+        if [[ -z "$magic" ]]; then
+            echo "[*] Magic value not found. Retry in 2s..."
+            rotate_log_if_large
+            sleep 2
+            continue
+        fi
 
-    rsp=$(cat "$RESPONSE_FILE")
-    magic=$(echo "$rsp" | grep -oE 'name="magic" value="([^"]+)' | sed 's/.*value="\([^"]*\).*/\1/')
-    if [[ -z "$magic" ]]; then
-        echo "[*] Magic value not found!"
-        rotate_log_if_large
-        echo "--- Response (no magic) ---" >> "$LOGFILE"
-        cat "$RESPONSE_FILE" >> "$LOGFILE"
-        exit 1
-    fi
+        data="4Tredir=http%3A%2F%2Fspeedtest.net%2F&magic=$magic&username=$username&password=$password"
 
-    data="4Tredir=http%3A%2F%2Fspeedtest.net%2F&magic=$magic&username=$username&password=$password"
+        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
+            -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -H "Referer: $url" \
+            -d "$data" \
+            "https://agnigarh.iitg.ac.in:1442/")
 
-    # POST to base URL, not login URL based on network logs
-    http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
-        -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
-        -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -H "Referer: $url" \
-        -d "$data" \
-        "https://agnigarh.iitg.ac.in:1442/")
+        if [[ $? -ne 0 || "$http_code" != "200" ]]; then
+            echo "[*] Error logging in (HTTP $http_code). Retry in 2s..."
+            rotate_log_if_large
+            sleep 2
+            continue
+        fi
 
-    if [[ $? -ne 0 || "$http_code" != "200" ]]; then
-        echo "[*] Error logging in (HTTP $http_code)"
-        rotate_log_if_large
-        echo "--- Response (login POST) ---" >> "$LOGFILE"
-        cat "$RESPONSE_FILE" >> "$LOGFILE"
-        exit 1
-    fi
+        html_content=$(cat "$RESPONSE_FILE")
+        keepalive=$(echo "$html_content" | grep -oP '(?<=window\.location=").*?(?=";)')
+        if [[ -z "$keepalive" ]]; then
+            echo "[*] Keepalive URL not found. Retry in 2s..."
+            rotate_log_if_large
+            sleep 2
+            continue
+        fi
 
-    echo "Login successful"
-    html_content=$(cat "$RESPONSE_FILE")
-    keepalive=$(echo "$html_content" | grep -oP '(?<=window\.location=").*?(?=";)')
-
-    if [[ -z "$keepalive" ]]; then
-        echo "[*] Keepalive URL not found."
-        rotate_log_if_large
-        echo "--- Response (no keepalive) ---" >> "$LOGFILE"
-        cat "$RESPONSE_FILE" >> "$LOGFILE"
-        exit 1
-    fi
-
-    # Extract session parameter from keepalive URL for logout
-    session_param=$(echo "$keepalive" | grep -oP '(?<=\?)[^"]*')
-
-    echo "Keepalive URL stored: $keepalive"
-    echo "Session parameter: $session_param"
+        session_param=$(echo "$keepalive" | grep -oP '(?<=\?)[^"]*')
+        echo "Login successful"
+        echo "Keepalive URL stored: $keepalive"
+        echo "Session parameter: $session_param"
+        break
+    done
 }
 
 # Function to keep the session alive
@@ -169,11 +156,10 @@ keep_session_alive() {
             "$keepalive")
 
         if [[ $? -ne 0 || "$http_code" != "200" ]]; then
-            echo "[*] Error in keepalive request (HTTP $http_code). Attempting to login again."
+            echo "[*] Keepalive failure (HTTP $http_code). Re-login in 2s..."
             rotate_log_if_large
-            echo "--- Response (keepalive) ---" >> "$LOGFILE"
-            cat "$RESPONSE_FILE" >> "$LOGFILE"
-            login  # Re-login if keepalive fails
+            sleep 2
+            login
         else
             echo "[*] Keepalive request successful"
         fi
@@ -183,7 +169,7 @@ keep_session_alive() {
 }
 
 # Main Script Execution
-trap cleanup EXIT  # Ensure cleanup is called on script exit
-terminate_old_session  # Handle previous instances
-login  # Initial login
-keep_session_alive  # Keep session alive
+trap cleanup EXIT
+terminate_old_session
+login
+keep_session_alive

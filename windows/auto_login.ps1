@@ -102,76 +102,77 @@ function Invoke-Logout {
             "https://agnigarh.iitg.ac.in:1442/logout?"
         }
         
-        $response = Invoke-WebRequest -Uri $logoutUrl -Headers $headers -UseBasicParsing -ErrorAction Stop
+        $null = Invoke-WebRequest -Uri $logoutUrl -Headers $headers -UseBasicParsing -ErrorAction Stop
         Write-Host "[*] Logged out!"
         return $true
     }
     catch {
-        Write-Host "[*] Logout failed!"
+        Write-Host "[*] Logout failed (continuing)"
         return $false
     }
 }
 
-# Function to login
+# Function to login (with retry loop)
 function Invoke-Login {
-    Invoke-Logout | Out-Null  # Make sure to logout first
-    Write-Host "Logging in with Username: $global:username"
-
-    # Clean up any existing cookies
-    if (Test-Path $COOKIES_FILE) {
-        Remove-Item $COOKIES_FILE -Force
-    }
-
-    try {
+    while ($true) {
+        Write-Host "Logging in with Username: $global:username"
+        Invoke-Logout | Out-Null
+        if (Test-Path $COOKIES_FILE) { Remove-Item $COOKIES_FILE -Force }
+        
         $headers = @{
             "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
         }
-        
         $loginUrl = "https://agnigarh.iitg.ac.in:1442/login?"
         
-        # Get login page
-        $loginPage = Invoke-WebRequest -Uri $loginUrl -Headers $headers -UseBasicParsing -ErrorAction Stop
+        # Fetch login page
+        try {
+            $loginPage = Invoke-WebRequest -Uri $loginUrl -Headers $headers -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Write-Host "[*] Error fetching login page. Retry in 2s..."
+            Rotate-LogIfLarge
+            Start-Sleep -Seconds 2
+            continue
+        }
         
-        # Extract magic value
+        # Extract magic
         if ($loginPage.Content -match 'name="magic" value="([^"]+)"') {
             $magic = $matches[1]
+        } else {
+            Write-Host "[*] Magic value not found. Retry in 2s..."
+            Rotate-LogIfLarge
+            Start-Sleep -Seconds 2
+            continue
         }
-        else {
-            Write-Host "[*] Magic value not found!"
-            exit 1
-        }
-
-        # Prepare POST data
-        $data = "4Tredir=http%3A%2F%2Fspeedtest.net%2F&magic=$magic&username=$global:username&password=$global:password"
         
+        $data = "4Tredir=http%3A%2F%2Fspeedtest.net%2F&magic=$magic&username=$global:username&password=$global:password"
         $headers["Content-Type"] = "application/x-www-form-urlencoded"
         $headers["Referer"] = $loginUrl
-
-        # POST to base URL, not login URL based on network logs
-        $loginResponse = Invoke-WebRequest -Uri "https://agnigarh.iitg.ac.in:1442/" -Method POST -Body $data -Headers $headers -UseBasicParsing -ErrorAction Stop
-
-        Write-Host "Login successful"
         
-        # Extract keepalive URL
+        # POST login
+        try {
+            $loginResponse = Invoke-WebRequest -Uri "https://agnigarh.iitg.ac.in:1442/" -Method POST -Body $data -Headers $headers -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Write-Host "[*] Error logging in. Retry in 2s..."
+            Rotate-LogIfLarge
+            Start-Sleep -Seconds 2
+            continue
+        }
+        
+        # Extract keepalive
         if ($loginResponse.Content -match 'window\.location="([^"]+)"') {
             $global:keepalive = $matches[1]
-            
-            # Extract session parameter from keepalive URL for logout
-            if ($global:keepalive -match '\?([^"]*)') {
-                $global:session_param = $matches[1]
-            }
-            
-            Write-Host "Keepalive URL stored: $global:keepalive"
-            Write-Host "Session parameter: $global:session_param"
+            if ($global:keepalive -match '\?([^"]*)') { $global:session_param = $matches[1] }
+        } else {
+            Write-Host "[*] Keepalive URL not found. Retry in 2s..."
+            Rotate-LogIfLarge
+            Start-Sleep -Seconds 2
+            continue
         }
-        else {
-            Write-Host "[*] Keepalive URL not found."
-            exit 1
-        }
-    }
-    catch {
-        Write-Host "[*] Error fetching login page"
-        exit 1
+        
+        Write-Host "Login successful"
+        Write-Host "Keepalive URL stored: $global:keepalive"
+        Write-Host "Session parameter: $global:session_param"
+        break
     }
 }
 
@@ -180,20 +181,18 @@ function Start-KeepSessionAlive {
     while ($true) {
         Rotate-LogIfLarge
         Write-Host "$(Get-Date)"
-        
+        $headers = @{
+            "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+        }
         try {
-            $headers = @{
-                "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
-            }
-            
-            $response = Invoke-WebRequest -Uri $global:keepalive -Headers $headers -UseBasicParsing -ErrorAction Stop
+            $null = Invoke-WebRequest -Uri $global:keepalive -Headers $headers -UseBasicParsing -ErrorAction Stop
             Write-Host "[*] Keepalive request successful"
+        } catch {
+            Write-Host "[*] Keepalive failure. Re-login in 2s..."
+            Rotate-LogIfLarge
+            Start-Sleep -Seconds 2
+            Invoke-Login
         }
-        catch {
-            Write-Host "[*] Error in keepalive request. Attempting to login again."
-            Invoke-Login  # Re-login if keepalive fails
-        }
-
         Start-Sleep -Seconds 100
     }
 }
@@ -203,9 +202,9 @@ Register-EngineEvent PowerShell.Exiting -Action { Invoke-Cleanup }
 
 # Main Script Execution
 try {
-    Stop-PreviousInstances  # Handle previous instances
-    Invoke-Login  # Initial login
-    Start-KeepSessionAlive  # Keep session alive
+    Stop-PreviousInstances
+    Invoke-Login
+    Start-KeepSessionAlive
 }
 catch {
     Write-Host "[*] Unexpected error: $($_.Exception.Message)"
