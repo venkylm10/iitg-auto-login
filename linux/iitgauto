@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG="$HOME/iitg-auto-login/config.env"
+BIN_PATH="/usr/local/bin/iitgauto"
+LOG_PATH="/tmp/iitg-auto_login.log"
+
+usage() {
+  cat <<EOF
+Usage: iitgauto <command>
+
+Commands:
+  install              Install auto-login (and install this CLI to /usr/local/bin)
+  creds                Show saved credentials (password masked)
+  creds --show         Show saved credentials with password unmasked
+  creds --update       Update saved credentials
+  logs [options]       Show logs (supports tail options like -n, -f)
+  uninstall            Uninstall auto-login and remove this CLI
+  help                 Show this help
+
+Examples:
+  iitgauto logs -n 100
+  iitgauto logs -f
+  iitgauto logs -n 200 -f
+EOF
+}
+
+print_creds() {
+  local show="${1:-false}"
+  if [[ -f "$CONFIG" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG"
+    local u="${USERNAME:-}"
+    local p="${PASSWORD:-}"
+    echo "Config file: $CONFIG"
+    if [[ -n "$u" ]]; then
+      echo "Username: $u"
+    else
+      echo "Username: (not set)"
+    fi
+    if [[ -n "$p" ]]; then
+      if [[ "$show" == "true" ]]; then
+        echo "Password: $p"
+      else
+        local len=${#p}
+        printf 'Password: '
+        printf '%*s' "$len" '' | tr ' ' '*'
+        printf ' (length: %d)\n' "$len"
+      fi
+    else
+      echo "Password: (not set)"
+    fi
+  else
+    echo "No config found at $CONFIG"
+  fi
+}
+
+install_cli() {
+  # Install/Update this wrapper to /usr/local/bin
+  if install -m 0755 "$script_dir/iitgauto" "$BIN_PATH" 2>/dev/null; then
+    echo "Installed CLI to $BIN_PATH"
+  else
+    echo "Elevated permissions required to install CLI to $BIN_PATH"
+    sudo install -m 0755 "$script_dir/iitgauto" "$BIN_PATH"
+    echo "Installed CLI to $BIN_PATH"
+  fi
+}
+
+remove_cli() {
+  if [[ -f "$BIN_PATH" ]]; then
+    if rm -f "$BIN_PATH" 2>/dev/null; then
+      echo "Removed $BIN_PATH"
+    else
+      echo "Elevated permissions required to remove $BIN_PATH"
+      sudo rm -f "$BIN_PATH"
+      echo "Removed $BIN_PATH"
+    fi
+  fi
+}
+
+run_install() {
+  # Prevent running the whole install as root (would install under /root)
+  if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+    echo "Do not run 'iitgauto install' with sudo. Run it as your normal user; it will prompt for sudo when needed."
+    exit 1
+  fi
+  # Require being run from the repository so we can access templates and scripts
+  if [[ ! -f "$script_dir/install.sh" ]]; then
+    echo "install.sh not found next to this script. Please run 'iitgauto install' from the repository's linux/ directory."
+    exit 1
+  fi
+  pushd "$script_dir" >/dev/null
+  bash "$script_dir/install.sh"
+  popd >/dev/null
+  install_cli
+}
+
+run_update_creds() {
+  # Inline update (does not depend on repo)
+  mkdir -p "$HOME/iitg-auto-login"
+  read -rp "Enter your username: " USERNAME
+  read -srp "Enter your password: " PASSWORD; echo
+  : > "$CONFIG"
+  {
+    echo "USERNAME=\"$USERNAME\""
+    echo "PASSWORD=\"$PASSWORD\""
+  } > "$CONFIG"
+  chmod 600 "$CONFIG"
+  echo "Credentials updated in $CONFIG"
+}
+
+run_logs() {
+  if [[ ! -f "$LOG_PATH" ]]; then
+    echo "Log file not found at $LOG_PATH"
+    echo "Tip: run the auto-login once (e.g., log in or reconnect) to generate logs."
+    exit 1
+  fi
+  if [[ $# -eq 0 ]]; then
+    tail -n 100 "$LOG_PATH"
+  else
+    tail "$@" "$LOG_PATH"
+  fi
+}
+
+run_uninstall() {
+  echo "Uninstalling..."
+  # Remove dispatcher
+  if command -v sudo >/dev/null 2>&1; then
+    sudo true || true
+    sudo rm -f /etc/NetworkManager/dispatcher.d/iitg-auto-login-dispatcher.sh || true
+    sudo systemctl restart NetworkManager || true
+  else
+    rm -f /etc/NetworkManager/dispatcher.d/iitg-auto-login-dispatcher.sh || true
+    systemctl restart NetworkManager || true
+  fi
+  # Remove user files
+  rm -rf "$HOME/iitg-auto-login" || true
+  rm -f "$HOME/.config/autostart/iitg-auto-login.desktop" || true
+  echo "Uninstallation complete."
+  remove_cli
+}
+
+main() {
+  local cmd="${1:-help}"
+  case "$cmd" in
+    install)
+      run_install
+      ;;
+    creds)
+      if [[ "${2:-}" == "--update" || "${2:-}" == "update" ]]; then
+        run_update_creds
+      elif [[ "${2:-}" == "--show" || "${2:-}" == "show" ]]; then
+        print_creds true
+      else
+        print_creds
+      fi
+      ;;
+    logs)
+      shift || true
+      run_logs "$@"
+      ;;
+    uninstall)
+      run_uninstall
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      echo "Unknown command: $cmd"
+      echo
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
