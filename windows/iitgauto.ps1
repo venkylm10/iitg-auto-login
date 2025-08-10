@@ -18,7 +18,7 @@ $ErrorActionPreference = 'Stop'
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ConfigPath = Join-Path $env:USERPROFILE 'iitg-auto-login\config.env'
-$LogPath    = Join-Path $env:TEMP 'iitg-auto_login.log'
+$LogPath    = Join-Path $env:TEMP 'iitg_auto_login.log'
 $Installer  = Join-Path $ScriptDir 'install.ps1'
 $CliTargetDir = Join-Path $env:LocalAppData 'IITGAuto'
 $CliPs1 = Join-Path $CliTargetDir 'iitgauto.ps1'

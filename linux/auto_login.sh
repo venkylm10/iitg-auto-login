@@ -3,9 +3,11 @@
 PROCESS_NAME="iitg-auto-login"
 
 # Set the log file path
-LOGFILE="/tmp/iitg-auto_login.log"
+LOGFILE="/tmp/iitg_auto_login.log"
 # Max lines allowed in log before truncating
 LOG_MAX_LINES=5000
+# Max seconds to wait for any curl connection/operation
+CURL_TIMEOUT=2
 
 # Update this user home value
 USERHOME="/home/<username>"
@@ -69,11 +71,11 @@ terminate_old_session() {
 logout() {
     echo "[*] Logging out..."
     if [[ -n "$session_param" ]]; then
-        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
+        http_code=$(curl --connect-timeout "$CURL_TIMEOUT" --max-time "$CURL_TIMEOUT" -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
             "https://agnigarh.iitg.ac.in:1442/logout?$session_param")
     else
-        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
+        http_code=$(curl --connect-timeout "$CURL_TIMEOUT" --max-time "$CURL_TIMEOUT" -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
             "https://agnigarh.iitg.ac.in:1442/logout?")
     fi
@@ -93,7 +95,7 @@ login() {
         rm -f /tmp/iitg_cookies.txt
 
         url='https://agnigarh.iitg.ac.in:1442/login?'
-        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt \
+        http_code=$(curl --connect-timeout "$CURL_TIMEOUT" --max-time "$CURL_TIMEOUT" -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -c /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
             "$url")
 
@@ -115,7 +117,7 @@ login() {
 
         data="4Tredir=http%3A%2F%2Fspeedtest.net%2F&magic=$magic&username=$username&password=$password"
 
-        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
+        http_code=$(curl --connect-timeout "$CURL_TIMEOUT" --max-time "$CURL_TIMEOUT" -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
             -c /tmp/iitg_cookies.txt -b /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
             -H "Content-Type: application/x-www-form-urlencoded" \
@@ -151,7 +153,7 @@ login() {
 keep_session_alive() {
     while true; do
         echo "$(date)"
-        http_code=$(curl -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -b /tmp/iitg_cookies.txt \
+        http_code=$(curl --connect-timeout "$CURL_TIMEOUT" --max-time "$CURL_TIMEOUT" -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -b /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
             "$keepalive")
 

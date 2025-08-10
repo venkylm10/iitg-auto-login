@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="$HOME/iitg-auto-login/config.env"
 BIN_PATH="/usr/local/bin/iitgauto"
-LOG_PATH="/tmp/iitg-auto_login.log"
+LOG_PATH="/tmp/iitg_auto_login.log"
 
 usage() {
   cat <<EOF

@@ -70,7 +70,7 @@ After that you can use it from anywhere:
 
 Notes:
 - Do not run `iitgauto install` with sudo. It will prompt for sudo only when needed.
-- Log file (Linux): `/tmp/iitg-auto_login.log` (rotation at 5000 lines)
+- Log file (Linux): `/tmp/iitg_auto_login.log` (rotation at 5000 lines)
 - Config file (Linux): `~/iitg-auto-login/config.env` (chmod 600)
 
 ## Linux (Optional) – Manual Setup
@@ -121,7 +121,7 @@ iitgauto update-cli
 ```
 
 Windows details:
-- Log file: `%TEMP%\iitg-auto_login.log` (rotation at 5000 lines)
+- Log file: `%TEMP%\iitg_auto_login.log` (rotation at 5000 lines)
 - Config file: `%USERPROFILE%\iitg-auto-login\config.env`
 - Scheduled tasks: "IITG Auto Login" and "IITG Auto Login - Network Change"
 
@@ -156,8 +156,8 @@ PASSWORD=your_password
 
 ## Logging
 
-- Linux log: `/tmp/iitg-auto_login.log` (rotates at 5000 lines)
-- Windows log: `%TEMP%\iitg-auto_login.log` (rotates at 5000 lines)
+- Linux log: `/tmp/iitg_auto_login.log` (rotates at 5000 lines)
+- Windows log: `%TEMP%\iitg_auto_login.log` (rotates at 5000 lines)
 - View quickly:
   ```bash
   iitgauto logs -n 100

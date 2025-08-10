@@ -13,8 +13,9 @@ if ($Help) {
 
 # Configuration
 $PROCESS_NAME = "auto_login"
-$LOGFILE = "$env:TEMP\iitg-auto_login.log"
+$LOGFILE = "$env:TEMP\iitg_auto_login.log"
 $LOG_MAX_LINES = 5000  # log rotation threshold
+$REQUEST_TIMEOUT = 2   # seconds (match Linux CURL_TIMEOUT)
 $USERHOME = $env:USERPROFILE
 $CONFIG_FILE = "$USERHOME\iitg-auto-login\config.env"
 $COOKIES_FILE = "$env:TEMP\iitg_cookies.txt"
@@ -64,6 +65,47 @@ catch {
     exit 1
 }
 
+# Wrapper to perform web requests with a hard timeout (supports Windows PowerShell 5.1 and PowerShell 7+)
+function Invoke-Request {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter()][string]$Method = 'GET',
+        [Parameter()][hashtable]$Headers,
+        [Parameter()][string]$Body
+    )
+    if ($PSVersionTable.PSVersion.Major -ge 7) {
+        try {
+            if ($Method -ieq 'POST') {
+                return Invoke-WebRequest -Uri $Uri -Method Post -Body $Body -Headers $Headers -TimeoutSec $REQUEST_TIMEOUT -ErrorAction Stop
+            } else {
+                return Invoke-WebRequest -Uri $Uri -Headers $Headers -TimeoutSec $REQUEST_TIMEOUT -ErrorAction Stop
+            }
+        } catch { throw }
+    } else {
+        # Windows PowerShell 5.1 lacks -TimeoutSec; emulate with background job
+        $job = Start-Job -ScriptBlock {
+            param($u,$m,$h,$b)
+            if ($m -ieq 'POST') {
+                Invoke-WebRequest -Uri $u -Method Post -Body $b -Headers $h -UseBasicParsing -ErrorAction Stop
+            } else {
+                Invoke-WebRequest -Uri $u -Headers $h -UseBasicParsing -ErrorAction Stop
+            }
+        } -ArgumentList $Uri,$Method,$Headers,$Body
+        if (Wait-Job $job -Timeout $REQUEST_TIMEOUT) {
+            try {
+                $result = Receive-Job $job
+            } finally {
+                Remove-Job $job -Force | Out-Null
+            }
+            return $result
+        } else {
+            Stop-Job $job -Force | Out-Null
+            Remove-Job $job -Force | Out-Null
+            throw "Timeout after $REQUEST_TIMEOUT s for $Uri"
+        }
+    }
+}
+
 # Function to handle cleanup on exit
 function Invoke-Cleanup {
     Write-Host "[*] Cleaning up..."
@@ -102,7 +144,7 @@ function Invoke-Logout {
             "https://agnigarh.iitg.ac.in:1442/logout?"
         }
         
-        $null = Invoke-WebRequest -Uri $logoutUrl -Headers $headers -UseBasicParsing -ErrorAction Stop
+        $null = Invoke-Request -Uri $logoutUrl -Headers $headers
         Write-Host "[*] Logged out!"
         return $true
     }
@@ -126,7 +168,7 @@ function Invoke-Login {
         
         # Fetch login page
         try {
-            $loginPage = Invoke-WebRequest -Uri $loginUrl -Headers $headers -UseBasicParsing -ErrorAction Stop
+            $loginPage = Invoke-Request -Uri $loginUrl -Headers $headers
         } catch {
             Write-Host "[*] Error fetching login page. Retry in 2s..."
             Rotate-LogIfLarge
@@ -150,7 +192,7 @@ function Invoke-Login {
         
         # POST login
         try {
-            $loginResponse = Invoke-WebRequest -Uri "https://agnigarh.iitg.ac.in:1442/" -Method POST -Body $data -Headers $headers -UseBasicParsing -ErrorAction Stop
+            $loginResponse = Invoke-Request -Uri "https://agnigarh.iitg.ac.in:1442/" -Method POST -Body $data -Headers $headers
         } catch {
             Write-Host "[*] Error logging in. Retry in 2s..."
             Rotate-LogIfLarge
@@ -185,7 +227,7 @@ function Start-KeepSessionAlive {
             "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
         }
         try {
-            $null = Invoke-WebRequest -Uri $global:keepalive -Headers $headers -UseBasicParsing -ErrorAction Stop
+            $null = Invoke-Request -Uri $global:keepalive -Headers $headers
             Write-Host "[*] Keepalive request successful"
         } catch {
             Write-Host "[*] Keepalive failure. Re-login in 2s..."

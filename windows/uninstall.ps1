@@ -60,7 +60,7 @@ else {
 Write-Host "Cleaning up temporary files..." -ForegroundColor Yellow
 $tempFiles = @(
     "$env:TEMP\iitg_cookies.txt",
-    "$env:TEMP\iitg-auto_login.log"
+    "$env:TEMP\iitg_auto_login.log"
 )
 
 foreach ($file in $tempFiles) {
