@@ -1,4 +1,13 @@
 #!/bin/bash
+for pid in $(pgrep -f iitg-auto-login); do
+    sudo kill $pid
+    echo "Killed process $pid"
+done
+
+for pid in $(pgrep -f iitg_auto_login); do
+    sudo kill $pid
+    echo "Killed process $pid"
+done
 
 sudo true
 sudo rm -f /etc/NetworkManager/dispatcher.d/iitg-auto-login-dispatcher.sh

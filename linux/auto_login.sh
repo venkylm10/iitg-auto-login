@@ -87,11 +87,28 @@ logout() {
     echo "[*] Logged out."
 }
 
+# Graceful logout used now only before a fresh login attempt (not on keepalive failure)
+# Wait in a loop until network is lost (google.com unreachable), then apply user-based jitter (0-2s) and logout.
+graceful_logout() {
+    echo "[*] Graceful logout: waiting until network is lost (google.com unreachable)..."
+    while curl -s --head --connect-timeout 2 --max-time 3 https://www.google.com >/dev/null 2>&1; do
+        sleep 1
+    done
+    echo "[*] Network appears down. Applying user-based delay before logout." 
+    local hash ms jitter
+    hash=$(echo -n "$username" | cksum | awk '{print $1}')
+    ms=$(( hash % 2000 ))
+    jitter=$(awk -v m=$ms 'BEGIN{printf "%.3f", m/1000}')
+    echo "[*] User-based delay: ${jitter}s"
+    sleep "$jitter"
+    logout >/dev/null 2>&1 || true
+}
+
 # Function to login (with retry loop)
 login() {
     while true; do
         echo "Logging in with Username: $username"
-        logout >/dev/null 2>&1
+        graceful_logout
         rm -f /tmp/iitg_cookies.txt
 
         url='https://agnigarh.iitg.ac.in:1442/login?'
@@ -151,22 +168,21 @@ login() {
 
 # Function to keep the session alive
 keep_session_alive() {
+    echo "[*] Keeping session alive..."
     while true; do
-        echo "$(date)"
         http_code=$(curl --connect-timeout "$CURL_TIMEOUT" --max-time "$CURL_TIMEOUT" -ksS -o "$RESPONSE_FILE" -w "%{http_code}" -b /tmp/iitg_cookies.txt \
             -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
             "$keepalive")
 
         if [[ $? -ne 0 || "$http_code" != "200" ]]; then
-            echo "[*] Keepalive failure (HTTP $http_code). Re-login in 2s..."
+            echo "[*] Keepalive failure (HTTP $http_code). Fast re-login..."
             rotate_log_if_large
-            sleep 2
             login
         else
-            echo "[*] Keepalive request successful"
+            echo "$(date) : Keepalive request successful"
         fi
 
-        sleep 100
+        sleep 5
     done
 }
 
